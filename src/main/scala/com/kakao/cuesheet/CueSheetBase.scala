@@ -54,6 +54,12 @@ abstract class CueSheetBase(additionalSettings: (String, String)*)
   /** build assembly to be launched in YARN cluster */
   protected def buildAssembly(): (String, Configuration) = {
     val (hadoopConf, confPath) = YarnConnector.getConfiguration(master)
+
+    if (config.contains("spark.yarn.principal") && config.contains("spark.yarn.keytab")) {
+      UserGroupInformation.loginUserFromKeytab(
+        config("spark.yarn.principal"), config("spark.yarn.keytab"))
+    }
+
     val assembly = JobAssembler.assembleDependencies(className, confPath)
     val sparkJars = YarnConnector.getSparkJarsPath(hadoopConf, loader)
 
