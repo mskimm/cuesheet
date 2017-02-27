@@ -6,6 +6,8 @@ import com.kakao.cuesheet.launcher.{JobAssembler, YarnConnector}
 import com.kakao.mango.concurrent.ConcurrentConverters
 import com.kakao.mango.json.JsonConverters
 import com.kakao.mango.logging.Logging
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.security.UserGroupInformation
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
@@ -50,7 +52,7 @@ abstract class CueSheetBase(additionalSettings: (String, String)*)
   private[cuesheet] def saveApplicationId(id: String): Unit = { applicationId = Some(id) }
 
   /** build assembly to be launched in YARN cluster */
-  protected def buildAssembly(): String = {
+  protected def buildAssembly(): (String, Configuration) = {
     val (hadoopConf, confPath) = YarnConnector.getConfiguration(master)
     val assembly = JobAssembler.assembleDependencies(className, confPath)
     val sparkJars = YarnConnector.getSparkJarsPath(hadoopConf, loader)
@@ -81,7 +83,7 @@ abstract class CueSheetBase(additionalSettings: (String, String)*)
       sparkConf.set("spark.hadoop." + entry.getKey, entry.getValue)
     }
 
-    assembly
+    (assembly, hadoopConf)
   }
 
   /** create SparkContext according to the configuration */
@@ -99,7 +101,7 @@ abstract class CueSheetBase(additionalSettings: (String, String)*)
           // no need to make assembly in local mode
           (master, "")
         } else if (manager == YARN) {
-          ("yarn-client", buildAssembly())
+          ("yarn-client", buildAssembly()._1)
         } else {
           // TODO: non-YARN cluster
           val assembly = JobAssembler.assembleDependencies(className)

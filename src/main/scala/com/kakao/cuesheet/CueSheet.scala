@@ -69,6 +69,8 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
            |}}
          """.stripMargin)
     }
+
+
   }
 
   /** This method can be overridden to implement something to be executed before the application starts.
@@ -125,14 +127,14 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
   private def runDeploy(args: Array[String]): Unit = {
     manager match {
       case YARN =>
-        val assembly = buildAssembly()
+        val (assembly, hadoopConf) = buildAssembly()
 
         // skip launch when installing the application
         if (!config.contains("cuesheet.install")) {
           val arguments = ArrayBuffer("--jar", assembly, "--class", className) ++ args.flatMap { arg => Seq("--arg", arg) }
           logger.info(s"spark-submit arguments: ${arguments.mkString(" ")}")
 
-          val hadoopConf = SparkHadoopUtil.get.newConfiguration(sparkConf)
+          // val hadoopConf = SparkHadoopUtil.get.newConfiguration(sparkConf)
           CueSheetYarnClient.run(hadoopConf, sparkConf, arguments.toArray, saveApplicationId)
         }
       case SPARK =>
@@ -150,8 +152,8 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
       throw new RuntimeException("Installing is supported only in YARN for now")
     }
 
-    val assembly = buildAssembly()
-    val hadoopConf = SparkHadoopUtil.get.newConfiguration(sparkConf)
+    val (assembly, hadoopConf) = buildAssembly()
+    //val hadoopConf = SparkHadoopUtil.get.newConfiguration(sparkConf)
 
     val uploadedAssembly = YarnConnector.uploadAssembly(hadoopConf, assembly, className, tag)
     val jarName = uploadedAssembly.split('/').last
