@@ -50,6 +50,8 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
     }
   }
 
+  def installApplicationPostHook(statement: String): Unit = {}
+
   /** prints runtime information */
   private def init(): Unit = {
     logger.info(s"Running CueSheet ${CueSheetVersion.version}")
@@ -168,17 +170,20 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
     val dir = s"${jarName.stripSuffix(".jar")}-$tag"
     val arguments = args.map(SparkLauncherHook.quoteForCommandString).mkString(" ")
 
-    System.err.println(
-      s"""
-         |rm -rf $dir && mkdir $dir && cd $dir &&
-         |echo $hadoopXML > core-site.xml &&
-         |hdfs --config . dfs -get hdfs://$shortJar \\!$jarName &&
-         |hdfs --config . dfs -get hdfs://$shortSparkJars &&
-         |java -classpath "*" $className $arguments && cd .. && rm -rf $dir
-         |
-         |""".stripMargin)
+    val statement = s"""
+                       |rm -rf $dir && mkdir $dir && cd $dir &&
+                       |echo $hadoopXML > core-site.xml &&
+                       |hdfs --config . dfs -get hdfs://$shortJar \\!$jarName &&
+                       |hdfs --config . dfs -get hdfs://$shortSparkJars &&
+                       |java -classpath "*" $className $arguments && cd .. && rm -rf $dir
+                       |
+                       |""".stripMargin
+
+    System.err.println(statement)
 
     System.out.flush()
+
+    installApplicationPostHook(statement)
   }
 
 }
