@@ -26,6 +26,13 @@ abstract class CueSheetBase(additionalSettings: (String, String)*)
     with ConcurrentConverters
     with Logging {
 
+  if (!System.getProperties.containsKey("config.resource")) {
+    val configFile = getClass.getCanonicalName.stripSuffix("$").replaceAll("[.]", "/") + ".conf"
+    System.setProperty("config.resource", configFile)
+  }
+
+  logger.info(s"config.resource = ${System.getProperty("config.resource")}")
+
   /** the fully qualified class name of the CueSheet application class */
   val className: String = getClass.getName.stripSuffix("$")
 
