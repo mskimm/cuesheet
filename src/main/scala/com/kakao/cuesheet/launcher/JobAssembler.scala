@@ -94,16 +94,20 @@ object JobAssembler extends Conversions with Logging {
     AutoClosing(new JarInputStream(source.openStream())) { input =>
       var total = 0L
       for (entry <- JarStreams.entries(input) if !entry.isDirectory) {
-        try {
-          target.putNextEntry(new JarEntry(entry.getName))
-          total += ByteStreams.copy(input, target)
-          target.closeEntry()
-        } catch {
-          case e: ZipException if e.getMessage.contains("duplicate entry") =>
-            logger.trace(s"skipping duplicate entry ${e.getMessage.split(":")(1)}")
-          case e: Throwable =>
-            logger.error(s"Exception during assembly: ${e.getMessage}")
-            throw new RuntimeException("Exception during assembly", e)
+        if (entry.getName.startsWith("scala/")) {
+          logger.warn(s"$entry ignored")
+        } else {
+          try {
+            target.putNextEntry(new JarEntry(entry.getName))
+            total += ByteStreams.copy(input, target)
+            target.closeEntry()
+          } catch {
+            case e: ZipException if e.getMessage.contains("duplicate entry") =>
+              logger.trace(s"skipping duplicate entry ${e.getMessage.split(":")(1)}")
+            case e: Throwable =>
+              logger.error(s"Exception during assembly: ${e.getMessage}")
+              throw new RuntimeException("Exception during assembly", e)
+          }
         }
       }
       logger.debug(s"copied $total bytes from $source")
