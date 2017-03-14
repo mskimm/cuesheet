@@ -5,7 +5,6 @@ import java.util.Date
 
 import com.kakao.cuesheet.launcher.YarnConnector
 import org.apache.spark.SparkContext
-import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.yarn.CueSheetYarnClient
 import org.apache.spark.launcher.SparkLauncherHook
 
@@ -41,6 +40,7 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
       installApplication(config("cuesheet.install"), args)
     } else {
       if (ExecutionConfig.mode == CLIENT || isOnCluster) {
+        preRunHook()
         // launch the main class, if it is configured for client mode or if this JVM is inside cluster already.
         runDriver(args)
       } else {
@@ -51,6 +51,8 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
   }
 
   def installApplicationPostHook(statement: String): Unit = {}
+
+  def preRunHook(): Unit = {}
 
   /** prints runtime information */
   private def init(): Unit = {
@@ -66,7 +68,7 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
       logger.warn(
         s"""consider using the double-brace trick like:
            |
-           |object ${getClass.getSimpleName.stripSuffix("$")} extends CueSheet {{
+           |objec ${getClass.getSimpleName.stripSuffix("$")} extends CueSheet {{
            |  // your main logic here ...
            |}}
          """.stripMargin)
@@ -137,6 +139,7 @@ abstract class CueSheet(additionalSettings: (String, String)*) extends CueSheetB
           logger.info(s"spark-submit arguments: ${arguments.mkString(" ")}")
 
           // val hadoopConf = SparkHadoopUtil.get.newConfiguration(sparkConf)
+          preRunHook()
           CueSheetYarnClient.run(hadoopConf, sparkConf, arguments.toArray, saveApplicationId)
         }
       case SPARK =>
